@@ -1,0 +1,11 @@
+"FB_Motor_DB"(
+    i_Start          := Start_PB,
+    i_Stop           := Stop_PB,
+    i_Emergency_Stop := Emergency_Stop,
+    i_Interlock      := NOT Safety_Gate_Open,
+    i_Reset_Hours    := Reset_Hours_PB,
+    o_Run_Command    => VFD_Run,
+    o_Running        => Motor_Is_Running,
+    o_Ramping        => Motor_Is_Ramping,
+    o_Hours          => Motor_Operating_Hours
+);
