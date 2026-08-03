@@ -1,0 +1,57 @@
+FUNCTION_BLOCK "FB_Motor_Control_Pro"
+
+VAR_INPUT
+    i_Start          : Bool;   // Кнопка Пуск
+    i_Stop           : Bool;   // Кнопка Стоп
+    i_Emergency_Stop : Bool;   // Аварийный стоп (TRUE = авария)
+    i_Interlock      : Bool;   // Разрешение (TRUE = можно работать)
+    i_Reset_Hours    : Bool;   // Сброс счётчика моточасов
+END_VAR
+
+VAR_OUTPUT
+    o_Run_Command    : Bool;   // Команда на частотник / пускатель
+    o_Running        : Bool;   // Двигатель реально работает (после разгона)
+    o_Ramping        : Bool;   // Идёт разгон
+    o_Hours          : Real;   // Наработка в часах
+END_VAR
+
+VAR
+    Motor_Mem        : Bool;   // Память самоподхвата
+    Ramp_Timer       : TON;    // Таймер разгона
+    Hour_Timer       : TON;    // Таймер для подсчёта часов
+    Hours_Internal   : Real;   // Внутренний счётчик
+END_VAR
+
+// --- Основная логика ---
+
+// Аварийный останов имеет наивысший приоритет
+IF i_Emergency_Stop THEN
+    Motor_Mem := FALSE;
+ELSE
+    Motor_Mem := (i_Start OR Motor_Mem) AND NOT i_Stop AND i_Interlock;
+END_IF;
+
+// Команда на частотник
+o_Run_Command := Motor_Mem;
+
+// Таймер разгона (пример — 5 секунд)
+Ramp_Timer(IN := Motor_Mem, PT := T#5S);
+o_Ramping := Motor_Mem AND NOT Ramp_Timer.Q;
+o_Running := Ramp_Timer.Q;
+
+// Подсчёт моточасов (считаем только когда двигатель реально работает)
+Hour_Timer(IN := o_Running, PT := T#1S);   // каждую секунду
+
+IF Hour_Timer.Q THEN
+    Hours_Internal := Hours_Internal + 1.0 / 3600.0;  // +1 секунда в часах
+    Hour_Timer(IN := FALSE);  // сброс для следующего импульса
+END_IF;
+
+// Сброс наработки
+IF i_Reset_Hours THEN
+    Hours_Internal := 0.0;
+END_IF;
+
+o_Hours := Hours_Internal;
+
+END_FUNCTION_BLOCK
